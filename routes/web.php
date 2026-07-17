@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Management\AuthController as ManagementAuthController;
 use App\Http\Controllers\Management\DashboardController as ManagementDashboardController;
+use App\Http\Controllers\Management\WorkReportController as ManagementWorkReportController;
 use App\Http\Controllers\Worker\AuthController as WorkerAuthController;
 use App\Http\Controllers\Worker\DailyAttendanceController;
 use App\Http\Controllers\Worker\HomeController as WorkerHomeController;
@@ -32,6 +33,11 @@ Route::prefix('manage')
                 '/',
                 ManagementDashboardController::class
             )->name('dashboard');
+
+            Route::get(
+                '/work-reports/{workReport}',
+                [ManagementWorkReportController::class, 'show']
+            )->name('work-reports.show');
 
             Route::post(
                 '/logout',

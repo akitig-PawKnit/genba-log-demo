@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureWorkerAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'worker.auth' => EnsureWorkerAuthenticated::class,
         ]);
+
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => route('management.login')
+        );
+
+        $middleware->redirectUsersTo(
+            fn (Request $request) => route('management.dashboard')
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
