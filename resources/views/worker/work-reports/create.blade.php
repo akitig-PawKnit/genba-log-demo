@@ -48,7 +48,9 @@
             <form
                 method="POST"
                 action="{{ route('worker.work-reports.store') }}"
+                enctype="multipart/form-data"
                 class="space-y-7"
+                id="work-report-form"
             >
                 @csrf
 
@@ -195,14 +197,13 @@
                         class="w-full rounded-lg border border-slate-300 px-3 py-4 text-base"
                     >
                         @for ($hours = 0; $hours <= 12; $hours += 0.5)
+                            @php
+                                $value = number_format($hours, 1, '.', '');
+                            @endphp
+
                             <option
-                                value="{{ number_format($hours, 1, '.', '') }}"
-                                @selected(
-                                    old(
-                                        'overtime_hours',
-                                        '0.0'
-                                    ) === number_format($hours, 1, '.', '')
-                                )
+                                value="{{ $value }}"
+                                @selected(old('overtime_hours', '0.0') === $value)
                             >
                                 {{ number_format($hours, 1) }}時間
                             </option>
@@ -339,15 +340,180 @@
                     >{{ old('notes') }}</textarea>
                 </div>
 
+                <div class="border-t border-slate-200 pt-6">
+                    <h2 class="text-base font-bold text-slate-900">
+                        現場写真
+                        <span class="font-normal text-slate-500">
+                            任意・1枚
+                        </span>
+                    </h2>
+
+                    <p class="mt-1 text-sm text-slate-600">
+                        写真を選ぶと、可能であれば現在地も取得します。
+                    </p>
+
+                    <div class="mt-4">
+                        <label
+                            for="photo"
+                            class="block cursor-pointer rounded-xl border-2 border-dashed border-slate-300 px-4 py-8 text-center hover:bg-slate-50"
+                        >
+                            <span class="block text-base font-semibold text-slate-800">
+                                現場写真を撮る・選ぶ
+                            </span>
+
+                            <span
+                                id="photo-name"
+                                class="mt-2 block text-sm text-slate-500"
+                            >
+                                写真はまだ選択されていません
+                            </span>
+                        </label>
+
+                        <input
+                            id="photo"
+                            name="photo"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/heic"
+                            capture="environment"
+                            class="sr-only"
+                        >
+
+                        @error('photo')
+                            <p class="mt-2 text-sm text-red-600">
+                                {{ $message }}
+                            </p>
+                        @enderror
+                    </div>
+
+                    <div
+                        id="location-status"
+                        class="mt-3 rounded-lg bg-slate-100 p-3 text-sm text-slate-600"
+                    >
+                        写真を選ぶと位置情報を取得します。
+                    </div>
+
+                    <input
+                        id="latitude"
+                        name="latitude"
+                        type="hidden"
+                        value="{{ old('latitude') }}"
+                    >
+
+                    <input
+                        id="longitude"
+                        name="longitude"
+                        type="hidden"
+                        value="{{ old('longitude') }}"
+                    >
+
+                    <input
+                        id="location_accuracy"
+                        name="location_accuracy"
+                        type="hidden"
+                        value="{{ old('location_accuracy') }}"
+                    >
+
+                    <input
+                        id="location_captured_at"
+                        name="location_captured_at"
+                        type="hidden"
+                        value="{{ old('location_captured_at') }}"
+                    >
+                </div>
+
                 <button
                     type="submit"
-                    class="w-full rounded-lg bg-blue-600 px-4 py-4 text-lg font-semibold text-white hover:bg-blue-700"
-                    onclick="this.disabled = true; this.form.submit();"
+                    id="submit-button"
+                    class="w-full rounded-lg bg-blue-600 px-4 py-4 text-lg font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400"
                 >
                     この内容で送信
                 </button>
             </form>
         </section>
     </main>
+
+    <script>
+        const form = document.getElementById('work-report-form');
+        const submitButton = document.getElementById('submit-button');
+
+        const photoInput = document.getElementById('photo');
+        const photoName = document.getElementById('photo-name');
+        const locationStatus = document.getElementById('location-status');
+
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+        const accuracyInput = document.getElementById('location_accuracy');
+        const capturedAtInput = document.getElementById(
+            'location_captured_at'
+        );
+
+        photoInput.addEventListener('change', () => {
+            const file = photoInput.files[0];
+
+            if (! file) {
+                photoName.textContent = '写真はまだ選択されていません';
+                locationStatus.textContent =
+                    '写真を選ぶと位置情報を取得します。';
+
+                latitudeInput.value = '';
+                longitudeInput.value = '';
+                accuracyInput.value = '';
+                capturedAtInput.value = '';
+
+                return;
+            }
+
+            photoName.textContent = file.name;
+
+            if (! navigator.geolocation) {
+                locationStatus.textContent =
+                    'この端末では位置情報を取得できません。写真のみ送信します。';
+
+                return;
+            }
+
+            locationStatus.textContent = '位置情報を取得しています…';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    latitudeInput.value =
+                        position.coords.latitude.toString();
+
+                    longitudeInput.value =
+                        position.coords.longitude.toString();
+
+                    accuracyInput.value =
+                        position.coords.accuracy.toString();
+
+                    capturedAtInput.value =
+                        new Date(position.timestamp).toISOString();
+
+                    locationStatus.textContent =
+                        `位置情報を取得しました（誤差 約${Math.round(
+                            position.coords.accuracy
+                        )}m）`;
+                },
+                () => {
+                    latitudeInput.value = '';
+                    longitudeInput.value = '';
+                    accuracyInput.value = '';
+                    capturedAtInput.value = '';
+
+                    locationStatus.textContent =
+                        '位置情報を取得できませんでした。写真のみ送信します。';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0,
+                }
+            );
+        });
+
+        form.addEventListener('submit', () => {
+            submitButton.disabled = true;
+            submitButton.textContent = '送信中…';
+        });
+    </script>
 </body>
 </html>

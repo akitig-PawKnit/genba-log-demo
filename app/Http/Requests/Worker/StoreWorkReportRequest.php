@@ -4,6 +4,7 @@ namespace App\Http\Requests\Worker;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class StoreWorkReportRequest extends FormRequest
 {
@@ -79,6 +80,37 @@ class StoreWorkReportRequest extends FormRequest
                 'string',
                 'max:1000',
             ],
+
+            'photo' => [
+                'nullable',
+                File::image()
+                    ->types(['jpg', 'jpeg', 'png', 'webp', 'heic'])
+                    ->max('10mb'),
+            ],
+            
+            'latitude' => [
+                'nullable',
+                'numeric',
+                'between:-90,90',
+            ],
+            
+            'longitude' => [
+                'nullable',
+                'numeric',
+                'between:-180,180',
+            ],
+            
+            'location_accuracy' => [
+                'nullable',
+                'numeric',
+                'min:0',
+                'max:100000',
+            ],
+            
+            'location_captured_at' => [
+                'nullable',
+                'date',
+            ],
         ];
     }
 
@@ -101,6 +133,10 @@ class StoreWorkReportRequest extends FormRequest
             'overtime_hours.multiple_of' => '残業時間は0.5時間単位で入力してください。',
 
             'other_cost_note.required_if' => 'その他経費がある場合は内容を入力してください。',
+            'photo.image' => '写真には画像ファイルを選択してください。',
+            'photo.max' => '写真は10MB以下にしてください。',
+            'latitude.between' => '取得した緯度が正しくありません。',
+            'longitude.between' => '取得した経度が正しくありません。',
         ];
     }
 

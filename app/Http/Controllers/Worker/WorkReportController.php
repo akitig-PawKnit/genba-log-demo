@@ -11,12 +11,15 @@ use App\Models\DailyAttendance;
 use App\Models\Site;
 use App\Models\Worker;
 use App\Models\WorkerRate;
+use App\Models\WorkReport;
 use App\Services\WorkCostCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class WorkReportController extends Controller
 {
@@ -39,7 +42,7 @@ class WorkReportController extends Controller
 
         /*
          * 初版では一日一現場に制限する。
-         * DB構造は複数現場を保存できる。
+         * DB構造は将来の複数現場登録に対応している。
          */
         if ($todayAttendance?->workReports()->exists()) {
             return redirect()
@@ -118,14 +121,15 @@ class WorkReportController extends Controller
             otherCost: (int) $validated['other_cost'],
         );
 
-        DB::transaction(function () use (
+        /** @var WorkReport $workReport */
+        $workReport = DB::transaction(function () use (
             $worker,
             $validated,
             $workShift,
             $workRole,
             $costs,
             $workDate,
-        ): void {
+        ): WorkReport {
             $attendance = DailyAttendance::query()
                 ->lockForUpdate()
                 ->firstOrCreate(
@@ -158,7 +162,7 @@ class WorkReportController extends Controller
                 'submitted_at' => now(),
             ]);
 
-            $attendance->workReports()->create([
+            return $attendance->workReports()->create([
                 'site_id' => $validated['site_id'],
 
                 'labor_units' => $validated['labor_units'],
@@ -175,6 +179,53 @@ class WorkReportController extends Controller
                 ...$costs,
             ]);
         });
+
+        if ($request->hasFile('photo')) {
+            $uploadedPhoto = $request->file('photo');
+            $storedPath = null;
+
+            try {
+                $storedPath = $request
+                    ->image('photo')
+                    ->orient()
+                    ->resize(width: 1600)
+                    ->toWebp()
+                    ->quality(80)
+                    ->storePublicly(
+                        'work-report-photos/'.$workDate->format('Y/m'),
+                        'public',
+                    );
+
+                $workReport->photo()->create([
+                    'file_path' => $storedPath,
+                    'original_name' => $uploadedPhoto->getClientOriginalName(),
+                    'mime_type' => Storage::disk('public')->mimeType($storedPath)
+                        ?: 'image/webp',
+                    'file_size' => Storage::disk('public')->size($storedPath),
+                    'width' => null,
+                    'height' => null,
+
+                    'latitude' => $validated['latitude'] ?? null,
+                    'longitude' => $validated['longitude'] ?? null,
+                    'location_accuracy' => $validated['location_accuracy'] ?? null,
+                    'location_captured_at' => $validated['location_captured_at'] ?? null,
+
+                    'uploaded_at' => now(),
+                ]);
+            } catch (Throwable $exception) {
+                if ($storedPath !== null) {
+                    Storage::disk('public')->delete($storedPath);
+                }
+
+                report($exception);
+
+                return redirect()
+                    ->route('worker.home')
+                    ->withErrors([
+                        'photo' => '出勤内容は登録されましたが、写真の保存に失敗しました。',
+                    ]);
+            }
+        }
 
         return redirect()
             ->route('worker.home')
