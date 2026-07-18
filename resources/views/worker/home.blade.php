@@ -1,167 +1,197 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
+@extends('layouts.worker')
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
+@section('title', '今日の入力')
 
-    <title>今日の入力 | Genba Log</title>
+@section('content')
+<section class="mb-5">
+    <p class="text-sm font-semibold text-blue-600">
+        {{ today()->format('Y年n月j日') }}
+    </p>
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
+    <h1 class="mt-1 text-2xl font-bold text-slate-950">
+        {{ $worker->name }}さん
+    </h1>
 
-<body class="min-h-screen bg-slate-100">
-    <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-xl items-center justify-between px-4 py-4">
-            <div>
-                <p class="text-sm font-semibold text-blue-600">
-                    Genba Log
-                </p>
+    <p class="mt-1 text-sm text-slate-500">
+        今日の出面を入力してください。
+    </p>
+</section>
 
-                <h1 class="text-lg font-bold text-slate-900">
-                    {{ $worker->name }}
-                </h1>
-            </div>
+@if ($todayAttendance)
+@if ($todayAttendance->status === \App\Enums\AttendanceStatus::Off)
+<section class="app-card overflow-hidden">
+    <div class="border-b border-slate-200 bg-slate-50 px-5 py-5">
+        <span class="status-off inline-flex rounded-full px-3 py-1 text-sm font-bold">
+            休み
+        </span>
 
-            <form
-                method="POST"
-                action="{{ route('worker.logout') }}"
-            >
-                @csrf
+        <h2 class="mt-4 text-xl font-bold text-slate-950">
+            本日は休みとして登録されています
+        </h2>
 
-                <button
-                    type="submit"
-                    class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                >
-                    ログアウト
-                </button>
-            </form>
-        </div>
-    </header>
+        <p class="mt-2 text-sm text-slate-500">
+            登録時刻：
+            {{ $todayAttendance->submitted_at?->format('H:i') ?? '—' }}
+        </p>
+    </div>
 
-    <main class="mx-auto max-w-xl px-4 py-6">
-        @if (session('success'))
-            <div class="mb-4 rounded-xl bg-green-50 p-4 text-green-800">
-                {{ session('success') }}
-            </div>
-        @endif
+    <div class="p-5">
+        <form method="POST" action="{{ route('worker.attendance.destroy-today') }}">
+            @csrf
+            @method('DELETE')
 
-        @if ($errors->any())
-            <div class="mb-4 rounded-xl bg-red-50 p-4 text-red-800">
-                @foreach ($errors->all() as $error)
-                    <p>{{ $error }}</p>
-                @endforeach
-            </div>
-        @endif
+            <button type="submit" class="app-button-danger w-full" onclick="return confirm('休みの登録を取り消しますか？')">
+                休みの登録を取り消す
+            </button>
+        </form>
+    </div>
+</section>
+@else
+<section class="app-card overflow-hidden">
+    <div class="border-b border-green-200 bg-green-50 px-5 py-5">
+        <span class="status-worked inline-flex rounded-full px-3 py-1 text-sm font-bold">
+            入力完了
+        </span>
 
-        <section class="rounded-2xl bg-white p-5 shadow-sm">
-            <p class="text-sm text-slate-500">
-                今日の日付
+        <h2 class="mt-4 text-xl font-bold text-green-950">
+            本日の入力は完了しています
+        </h2>
+    </div>
+
+    <div class="divide-y divide-slate-100">
+        @forelse ($todayAttendance->workReports as $report)
+        <article class="p-5">
+            <p class="text-sm font-semibold text-slate-500">
+                現場
             </p>
 
-            <p class="mt-1 text-xl font-bold text-slate-900">
-                {{ today()->format('Y年n月j日') }}
-            </p>
+            <h3 class="mt-1 text-lg font-bold text-slate-950">
+                {{ $report->site->name }}
+            </h3>
 
-            @if ($todayAttendance)
-                @if ($todayAttendance->status === \App\Enums\AttendanceStatus::Off)
-                    <div class="mt-6 rounded-xl bg-slate-100 p-4">
-                        <p class="font-semibold text-slate-800">
-                            本日は休みとして登録されています
-                        </p>
-
-                        <p class="mt-2 text-sm text-slate-600">
-                            入力日時：
-                            {{ $todayAttendance->submitted_at?->format('H:i') }}
-                        </p>
-                    </div>
-
-                    <form
-                        method="POST"
-                        action="{{ route('worker.attendance.destroy-today') }}"
-                        class="mt-4"
-                    >
-                        @csrf
-                        @method('DELETE')
-
-                        <button
-                            type="submit"
-                            class="w-full rounded-lg border border-red-300 px-4 py-3 font-semibold text-red-700 hover:bg-red-50"
-                            onclick="return confirm('休みの登録を取り消しますか？')"
-                        >
-                            休みの登録を取り消す
-                        </button>
-                    </form>
-                @else
-                    <div class="mt-6 rounded-xl bg-green-50 p-4">
-                        <p class="font-semibold text-green-800">
-                            本日の入力は完了しています
-                        </p>
-
-                        @forelse ($todayAttendance->workReports as $report)
-                            <div class="mt-3 border-t border-green-200 pt-3">
-                                <p class="font-medium text-green-900">
-                                    {{ $report->site->name }}
-                                </p>
-
-                                <p class="mt-1 text-sm text-green-700">
-                                    {{ number_format((float) $report->labor_units, 1) }}人工
-                                </p>
-
-                                <p class="mt-1 text-sm text-green-700">
-                                    区分：
-                                    {{ $report->work_shift->value }}
-                                    /
-                                    {{ $report->work_role->value }}
-                                </p>
-
-                                @if ((float) $report->overtime_hours > 0)
-                                    <p class="mt-1 text-sm text-green-700">
-                                        残業：
-                                        {{ number_format((float) $report->overtime_hours, 1) }}時間
-                                    </p>
-                                @endif
-                            </div>
-                        @empty
-                            <p class="mt-3 text-sm text-green-700">
-                                出勤明細はまだ登録されていません。
-                            </p>
-                        @endforelse
-                    </div>
-                @endif
-            @else
-                <div class="mt-6 space-y-3">
-                    <p class="text-slate-700">
-                        本日の出面はまだ入力されていません。
+            <div class="mt-5 grid grid-cols-2 gap-3">
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs font-semibold text-slate-500">
+                        人工
                     </p>
 
-                    <a
-                        href="{{ route('worker.work-reports.create') }}"
-                        class="block w-full rounded-lg bg-blue-600 px-4 py-4 text-center text-lg font-semibold text-white hover:bg-blue-700"
-                    >
-                        出勤を入力
-                    </a>
-
-                    <form
-                        method="POST"
-                        action="{{ route('worker.attendance.off') }}"
-                    >
-                        @csrf
-
-                        <button
-                            type="submit"
-                            class="w-full rounded-lg border border-slate-300 px-4 py-4 text-lg font-semibold text-slate-700 hover:bg-slate-50"
-                            onclick="return confirm('今日は休みとして登録しますか？')"
-                        >
-                            今日は休み
-                        </button>
-                    </form>
+                    <p class="mt-1 text-lg font-bold text-slate-900">
+                        {{ number_format(
+                                            (float) $report->labor_units,
+                                            1
+                                        ) }}人工
+                    </p>
                 </div>
-            @endif
-        </section>
-    </main>
-</body>
-</html>
+
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs font-semibold text-slate-500">
+                        勤務区分
+                    </p>
+
+                    <p class="mt-1 text-lg font-bold text-slate-900">
+                        {{ $report->work_shift->value === 'night'
+                                            ? '夜勤'
+                                            : '通常' }}
+                    </p>
+                </div>
+
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs font-semibold text-slate-500">
+                        役割
+                    </p>
+
+                    <p class="mt-1 text-lg font-bold text-slate-900">
+                        @switch($report->work_role->value)
+                        @case('support')
+                        応援
+                        @break
+
+                        @case('foreman')
+                        職長
+                        @break
+
+                        @default
+                        一般
+                        @endswitch
+                    </p>
+                </div>
+
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs font-semibold text-slate-500">
+                        残業
+                    </p>
+
+                    <p class="mt-1 text-lg font-bold text-slate-900">
+                        {{ number_format(
+                                            (float) $report->overtime_hours,
+                                            1
+                                        ) }}時間
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-4 rounded-xl border border-slate-200 p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-500">
+                        現場写真
+                    </span>
+
+                    <span class="{{ $report->photo
+                                        ? 'font-bold text-green-700'
+                                        : 'text-slate-400' }}">
+                        {{ $report->photo ? '送信済み' : 'なし' }}
+                    </span>
+                </div>
+            </div>
+        </article>
+        @empty
+        <div class="p-5 text-sm text-slate-500">
+            出勤明細が見つかりません。
+        </div>
+        @endforelse
+    </div>
+</section>
+@endif
+@else
+<section class="app-card overflow-hidden">
+    <div class="border-b border-slate-200 bg-white px-5 py-5">
+        <span class="status-missing inline-flex rounded-full px-3 py-1 text-sm font-bold">
+            未入力
+        </span>
+
+        <h2 class="mt-4 text-xl font-bold text-slate-950">
+            本日の出面はまだ入力されていません
+        </h2>
+
+        <p class="mt-2 text-sm leading-6 text-slate-500">
+            出勤した場合は「出勤を入力」、休みの場合は「今日は休み」を押してください。
+        </p>
+    </div>
+
+    <div class="space-y-3 p-5">
+        <a href="{{ route('worker.work-reports.create') }}" class="app-button-primary w-full py-4 text-lg">
+            出勤を入力
+        </a>
+
+        <form method="POST" action="{{ route('worker.attendance.off') }}">
+            @csrf
+
+            <button type="submit" class="app-button-secondary w-full py-4 text-lg"
+                onclick="return confirm('今日は休みとして登録しますか？')">
+                今日は休み
+            </button>
+        </form>
+    </div>
+</section>
+
+<section class="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+    <p class="font-bold text-blue-950">
+        入力は1分ほどで完了します
+    </p>
+
+    <p class="mt-2 text-sm leading-6 text-blue-800">
+        現場を選び、人工・勤務区分・経費などを入力して送信してください。
+    </p>
+</section>
+@endif
+@endsection

@@ -9,6 +9,7 @@ use App\Http\Controllers\Worker\HomeController as WorkerHomeController;
 use App\Http\Controllers\Worker\WorkReportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Management\SiteController as ManagementSiteController;
+use App\Http\Controllers\Management\WorkerController as ManagementWorkerController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -79,6 +80,51 @@ Route::prefix('manage')
                 '/sites/{site}/reopen',
                 [ManagementSiteController::class, 'reopen']
             )->name('sites.reopen');
+
+            Route::get(
+                '/workers',
+                [ManagementWorkerController::class, 'index']
+            )->name('workers.index');
+
+            Route::get(
+                '/workers/create',
+                [ManagementWorkerController::class, 'create']
+            )->name('workers.create');
+
+            Route::post(
+                '/workers',
+                [ManagementWorkerController::class, 'store']
+            )->name('workers.store');
+
+            Route::get(
+                '/workers/{worker}/edit',
+                [ManagementWorkerController::class, 'edit']
+            )->name('workers.edit');
+
+            Route::put(
+                '/workers/{worker}',
+                [ManagementWorkerController::class, 'update']
+            )->name('workers.update');
+
+            Route::patch(
+                '/workers/{worker}/pin',
+                [ManagementWorkerController::class, 'updatePin']
+            )->name('workers.pin.update');
+
+            Route::post(
+                '/workers/{worker}/rates',
+                [ManagementWorkerController::class, 'updateRate']
+            )->name('workers.rates.store');
+
+            Route::patch(
+                '/workers/{worker}/retire',
+                [ManagementWorkerController::class, 'retire']
+            )->name('workers.retire');
+
+            Route::patch(
+                '/workers/{worker}/reactivate',
+                [ManagementWorkerController::class, 'reactivate']
+            )->name('workers.reactivate');
         });
     });
 
