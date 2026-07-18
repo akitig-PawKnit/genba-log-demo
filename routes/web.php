@@ -8,6 +8,7 @@ use App\Http\Controllers\Worker\DailyAttendanceController;
 use App\Http\Controllers\Worker\HomeController as WorkerHomeController;
 use App\Http\Controllers\Worker\WorkReportController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Management\SiteController as ManagementSiteController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -43,6 +44,41 @@ Route::prefix('manage')
                 '/logout',
                 [ManagementAuthController::class, 'destroy']
             )->name('logout');
+
+            Route::get(
+                '/sites',
+                [ManagementSiteController::class, 'index']
+            )->name('sites.index');
+
+            Route::get(
+                '/sites/create',
+                [ManagementSiteController::class, 'create']
+            )->name('sites.create');
+
+            Route::post(
+                '/sites',
+                [ManagementSiteController::class, 'store']
+            )->name('sites.store');
+
+            Route::get(
+                '/sites/{site}/edit',
+                [ManagementSiteController::class, 'edit']
+            )->name('sites.edit');
+
+            Route::put(
+                '/sites/{site}',
+                [ManagementSiteController::class, 'update']
+            )->name('sites.update');
+
+            Route::patch(
+                '/sites/{site}/close',
+                [ManagementSiteController::class, 'close']
+            )->name('sites.close');
+
+            Route::patch(
+                '/sites/{site}/reopen',
+                [ManagementSiteController::class, 'reopen']
+            )->name('sites.reopen');
         });
     });
 
